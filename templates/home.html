@@ -1,0 +1,225 @@
+﻿<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Student Performance Predictor</title>
+    <style>
+        :root {
+            --bg-1: #f4f9ff;
+            --bg-2: #e8f3ff;
+            --panel: #ffffff;
+            --text: #10243e;
+            --muted: #5d6f86;
+            --accent: #0a84ff;
+            --accent-dark: #0667c8;
+            --border: #d8e6f7;
+            --shadow: 0 20px 45px rgba(16, 36, 62, 0.12);
+            --success-bg: #eafaf0;
+            --success-text: #176337;
+            --error-bg: #fff0f0;
+            --error-text: #8a1f2d;
+        }
+
+        * {
+            box-sizing: border-box;
+        }
+
+        body {
+            margin: 0;
+            min-height: 100vh;
+            font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
+            color: var(--text);
+            background:
+                radial-gradient(circle at 10% 10%, #cce4ff 0%, transparent 35%),
+                radial-gradient(circle at 90% 20%, #d8f6ee 0%, transparent 32%),
+                linear-gradient(135deg, var(--bg-1), var(--bg-2));
+            display: grid;
+            place-items: center;
+            padding: 24px;
+        }
+
+        .card {
+            width: min(860px, 100%);
+            background: var(--panel);
+            border: 1px solid var(--border);
+            border-radius: 18px;
+            box-shadow: var(--shadow);
+            padding: 28px;
+        }
+
+        h1 {
+            margin: 0 0 8px;
+            font-size: clamp(1.6rem, 2.5vw, 2.2rem);
+            letter-spacing: 0.2px;
+        }
+
+        .subtitle {
+            margin: 0 0 24px;
+            color: var(--muted);
+            font-size: 0.98rem;
+        }
+
+        .alert {
+            border-radius: 12px;
+            padding: 12px 14px;
+            margin-bottom: 16px;
+            font-size: 0.95rem;
+            font-weight: 600;
+        }
+
+        .alert-success {
+            background: var(--success-bg);
+            color: var(--success-text);
+            border: 1px solid #bee7cb;
+        }
+
+        .alert-error {
+            background: var(--error-bg);
+            color: var(--error-text);
+            border: 1px solid #f3c4c9;
+        }
+
+        form {
+            display: grid;
+            gap: 16px;
+        }
+
+        .grid {
+            display: grid;
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+            gap: 14px;
+        }
+
+        .field {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        label {
+            font-size: 0.92rem;
+            font-weight: 600;
+        }
+
+        input {
+            width: 100%;
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 11px 12px;
+            font-size: 0.96rem;
+            color: var(--text);
+            outline: none;
+            transition: border-color 0.2s ease, box-shadow 0.2s ease;
+            background-color: #fbfdff;
+        }
+
+        input:focus {
+            border-color: var(--accent);
+            box-shadow: 0 0 0 4px rgba(10, 132, 255, 0.14);
+        }
+
+        .actions {
+            display: flex;
+            justify-content: flex-end;
+            margin-top: 4px;
+        }
+
+        button {
+            border: 0;
+            border-radius: 12px;
+            background: linear-gradient(135deg, var(--accent), var(--accent-dark));
+            color: #ffffff;
+            font-size: 0.95rem;
+            font-weight: 700;
+            padding: 12px 20px;
+            cursor: pointer;
+            transition: transform 0.15s ease, filter 0.2s ease;
+        }
+
+        button:hover {
+            filter: brightness(1.05);
+        }
+
+        button:active {
+            transform: translateY(1px);
+        }
+
+        @media (max-width: 720px) {
+            .card {
+                padding: 20px;
+            }
+
+            .grid {
+                grid-template-columns: 1fr;
+            }
+
+            .actions {
+                justify-content: stretch;
+            }
+
+            button {
+                width: 100%;
+            }
+        }
+    </style>
+</head>
+<body>
+    <main class="card">
+        <h1>Student Performance Predictor</h1>
+        <p class="subtitle">Enter student metrics and predict whether the final result is likely Pass or Fail.</p>
+
+        {% if prediction %}
+         {% if prediction == "pass"%}
+            <div class="alert alert-success">
+                Predicted Result: You can {{ prediction }} easily
+            </div>
+         {%else%}
+            <div class="alert alert-success">
+                Predicted Result: {{ prediction }} , You need some Improvement 
+            </div>
+         {%endif%}
+        {% endif %}
+
+        {% if error %}
+            <div class="alert alert-error">
+                {{ error }}
+            </div>
+        {% endif %}
+
+        <form method="post">
+            {% csrf_token %}
+            <div class="grid">
+                <div class="field">
+                    <label for="hours_studied">Hours Studied Daily</label>
+                    <input type="number" step="0.01" min="0" id="hours_studied" name="hours_studied" placeholder="e.g. 4.5" value="{{ form_data.hours_studied|default:'' }}" required>
+                </div>
+
+                <div class="field">
+                    <label for="attendance">Attendance (%)</label>
+                    <input type="number" step="0.01" min="0" max="100" id="attendance" name="attendance" placeholder="e.g. 89" value="{{ form_data.attendance|default:'' }}" required>
+                </div>
+
+                <div class="field">
+                    <label for="internal_marks">Internal Marks (Out of 30)</label>
+                    <input type="number" step="0.01" min="0" max="30" id="internal_marks" name="internal_marks" placeholder="e.g. 25" value="{{ form_data.internal_marks|default:'' }}" required>
+                </div>
+
+                <div class="field">
+                    <label for="cgpa">CGPA (Out of 10)</label>
+                    <input type="number" step="0.01" min="0" max="10" id="cgpa" name="cgpa" placeholder="e.g. 8.1" value="{{ form_data.cgpa|default:'' }}" required>
+                </div>
+
+                <div class="field">
+                    <label for="last_sem_sgpa">Last Semester SGPA (Out of 10)</label>
+                    <input type="number" step="0.01" min="0" max="10" id="last_sem_sgpa" name="last_sem_sgpa" placeholder="e.g. 7.9" value="{{ form_data.last_sem_sgpa|default:'' }}" required>
+                </div>
+            </div>
+
+            <div class="actions">
+                <button type="submit">Predict Result</button>
+            </div>
+        </form>
+    </main>
+</body>
+</html>
