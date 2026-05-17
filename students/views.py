@@ -1,13 +1,22 @@
 import os
 import joblib
+import pandas as pd
 from django.shortcuts import render
 from django.conf import settings
 
-# --- 1. MODEL LOADING CONFIGURATION ---
-# This looks for the 'ml_model' folder in your project root
-MODEL_PATH = os.path.join(settings.BASE_DIR, 'ml_model', 'student_model.joblib')
+MODEL_PATH = os.path.join(settings.BASE_DIR, "ml_model", "student_model.joblib")
+DEFAULT_FEATURE_NAMES = [
+    "hours_studied",
+    "attendance",
+    "internal_marks",
+    "cgpa",
+    "last_sem_sgpa",
+    "backlogs",
+    "assignment_submission",
+    "lab_marks",
+    "practice_hours",
+]
 
-# We load the model once when the server starts to save memory and time
 if os.path.exists(MODEL_PATH):
     try:
         MODEL = joblib.load(MODEL_PATH)
@@ -19,49 +28,62 @@ else:
     print(f"Warning: Model file not found at {MODEL_PATH}")
 
 
-# --- 2. THE HOME VIEW ---
+def get_feature_names():
+    if isinstance(MODEL, dict):
+        return MODEL.get("features", DEFAULT_FEATURE_NAMES)
+    return DEFAULT_FEATURE_NAMES
+
+
+def validate_model():
+    required_keys = {"clf_result", "clf_risk", "reg_cgpa", "le_result", "le_risk"}
+    if MODEL is None:
+        raise Exception(
+            "The machine learning model is not loaded. Please train the model first."
+        )
+    if not isinstance(MODEL, dict) or not required_keys.issubset(MODEL):
+        raise Exception(
+            "The machine learning model has an unexpected format. Please retrain it."
+        )
+
+
 def home(request):
     """
     Handles the student data input form and returns the Pass/Fail prediction.
     """
-    # Define the exact features the model expects
-    feature_names = [
-        "hours_studied", 
-        "attendance", 
-        "internal_marks", 
-        "cgpa", 
-        "last_sem_sgpa"
-    ]
+    feature_names = get_feature_names()
 
     context = {
         "prediction": None,
         "error": None,
-        "form_data": {},  # Keeps user input in the fields after they click submit
+        "form_data": {},
     }
 
     if request.method == "POST":
-        # Collect data from the POST request
         context["form_data"] = {
             field: request.POST.get(field, "").strip() for field in feature_names
         }
 
         try:
-            # 1. Check if the model exists
-            if MODEL is None:
-                raise Exception("The machine learning model is not loaded. Please check the 'ml_model' folder.")
+            validate_model()
 
-            # 2. Convert string inputs to floats
-            # This will trigger a ValueError if a field is empty or contains letters
             input_values = [
                 float(context["form_data"][field]) for field in feature_names
             ]
+            x_input = pd.DataFrame([input_values], columns=feature_names)
 
-            # 3. Predict using the Random Forest model
-            # [input_values] wraps the list in another list because scikit-learn expects 2D data
-            result = MODEL.predict([input_values])[0]
-            
-            # 4. Store the result in context
-            context["prediction"] = result
+            result_enc = MODEL["clf_result"].predict(x_input)[0]
+            result = MODEL["le_result"].inverse_transform([int(result_enc)])[0]
+
+            risk_enc = MODEL["clf_risk"].predict(x_input)[0]
+            risk = MODEL["le_risk"].inverse_transform([int(risk_enc)])[0]
+
+            predicted_cgpa = float(MODEL["reg_cgpa"].predict(x_input)[0])
+
+            context["prediction"] = {
+                "result": result,
+                "academic_risk_level": risk,
+                "predicted_cgpa": round(predicted_cgpa, 2),
+            }
 
         except ValueError:
             context["error"] = "Invalid input! Please ensure all fields contain only numbers."
